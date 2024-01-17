@@ -26,7 +26,7 @@ def new_vm():
     os = int(request.args.get('operatingSys'))
     cpu = int(request.args.get('cpu'))
     memory = int(request.args.get('memory'))
-    disk = int(request.args.get('disk'))
+    disk = int(request.args.get('disk'))  # 硬盘大小已经被写死 此处没有作用
 
     # 选择到了合适的slave
     res = select_slave(cpu, memory, disk)
@@ -135,6 +135,29 @@ def reboot_vm():
     return jsonify(response_data)
 
 
+@app.route('/info')
+def get_vm_info():
+    """获取虚拟机的状态"""
+    vm_name = request.args.get("vm_name")
+    kvm_info = kvm_service()
+    success = False
+    message = kvm_info.get_vm_info(vm_name)
+    if message is not None:
+        success = True
+    else:
+        message = f"get info error"
+    response_data = {
+        'success': success,
+        'message': message
+    }
+    return jsonify(response_data)
+
+
+@app.route('/')
+def root():
+    return "success"
+
+
 def select_slave(cpu, memory, disk):
     """通过对比 寻找合适的slave作为宿主机"""
     for i, slave_item in enumerate(slaves, start=1):
@@ -144,4 +167,4 @@ def select_slave(cpu, memory, disk):
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host="192.168.45.124", port=5000)

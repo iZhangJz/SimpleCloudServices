@@ -45,3 +45,10 @@ class slave:
             print(f"HostName: {hostname};Version: {version}")
         except libvirt.libvirtError as e:
             print(e)
+
+    def update_info(self, cpu, memory):
+        if self.cpu == 0 or self.memory == 0:
+            return False
+        self.cpu += cpu
+        self.memory += memory
+        return True
