@@ -10,7 +10,7 @@ app = Flask(__name__)
 CORS().init_app(app)
 
 # 创建三个slave
-slave_a = slave("192.168.45.107", "root", 2, 2, 30)
+slave_a = slave("192.168.45.107", "root", 1, 1, 35)
 slave_b = slave("192.168.45.142", "root", 2, 2, 30)
 slave_c = slave("192.168.45.122", "root", 2, 2, 30)
 slaves = [slave_a, slave_b, slave_c]
@@ -23,11 +23,10 @@ def new_vm():
     message = "New VM failed"
 
     # 创建新的虚拟机 参数虚拟机类型 cpu数量 memory大小 和 disk大小
-    data = request.get_json()
-    os = data.get('operatingSys')
-    cpu = data.get('cpu')
-    memory = data.get('memory')
-    disk = data.get('disk')
+    os = int(request.args.get('operatingSys'))
+    cpu = int(request.args.get('cpu'))
+    memory = int(request.args.get('memory'))
+    disk = int(request.args.get('disk'))
 
     # 选择到了合适的slave
     res = select_slave(cpu, memory, disk)
@@ -39,14 +38,14 @@ def new_vm():
         return jsonify(response_data)
     else:
         # 在slave上创建虚拟机
-        kvm_ctl = kvm_service()
+        kvm_new = kvm_service()
         if os == 1:
             # 表示创建一个ubuntu 返回值为虚拟机名称
-            name = kvm_ctl.new_ubuntu_vm(res, cpu, memory)
+            name = kvm_new.new_ubuntu_vm(res, cpu, memory)
             message = name
         elif os == 2:
             # 表示创建一个CentOS7
-            name = kvm_ctl.new_centos_vm(res, cpu, memory)
+            name = kvm_new.new_centos_vm(res, cpu, memory)
             message = name
         success = True
         response_data = {
@@ -59,37 +58,81 @@ def new_vm():
 @app.route('/open')
 def open_vm():
     """启动虚拟机"""
-    data = request.get_json()
-    vm_name = data.get('VMName')
-    kvm_ctl = kvm_service()
-    return kvm_ctl.run_vm(vm_name)
+    vm_name = request.args.get("vm_name")
+    kvm_open = kvm_service()
+    success = False
+    message = f"open {vm_name} failed"
+    if kvm_open.run_vm(vm_name):
+        # 启动成功
+        message = f"open {vm_name} success"
+        success = True
+
+    response_data = {
+        'success': success,
+        'message': message
+    }
+
+    return jsonify(response_data)
 
 
 @app.route('/delete')
 def delete_vm():
     """删除虚拟机"""
-    data = request.get_json()
-    vm_name = data.get('VMName')
-    kvm_ctl = kvm_service()
-    return kvm_ctl.delete_vm(vm_name)
+    vm_name = request.args.get("vm_name")
+    kvm_delete = kvm_service()
+    success = False
+    message = f"delete {vm_name} failed"
+    if kvm_delete.delete_vm(vm_name):
+        # 启动成功
+        message = f"delete {vm_name} success"
+        success = True
+
+    response_data = {
+        'success': success,
+        'message': message
+    }
+
+    return jsonify(response_data)
 
 
 @app.route('/shutdown')
 def shutdown_vm():
     """关闭虚拟机"""
-    data = request.get_json()
-    vm_name = data.get('VMName')
-    kvm_ctl = kvm_service()
-    return kvm_ctl.shutdown_vm(vm_name)
+    vm_name = request.args.get("vm_name")
+    kvm_shutdown = kvm_service()
+    success = False
+    message = f"shutdown {vm_name} failed"
+    if kvm_shutdown.shutdown_vm(vm_name):
+        # 启动成功
+        message = f"shutdown {vm_name} success"
+        success = True
+
+    response_data = {
+        'success': success,
+        'message': message
+    }
+
+    return jsonify(response_data)
 
 
 @app.route('/reboot')
 def reboot_vm():
     """重启虚拟机"""
-    data = request.get_json()
-    vm_name = data.get('VMName')
-    kvm_ctl = kvm_service()
-    return kvm_ctl.reboot_vm(vm_name)
+    vm_name = request.args.get("vm_name")
+    kvm_reboot = kvm_service()
+    success = False
+    message = f"reboot {vm_name} failed"
+    if kvm_reboot.reboot_vm(vm_name):
+        # 启动成功
+        message = f"reboot {vm_name} success"
+        success = True
+
+    response_data = {
+        'success': success,
+        'message': message
+    }
+
+    return jsonify(response_data)
 
 
 def select_slave(cpu, memory, disk):
@@ -101,9 +144,4 @@ def select_slave(cpu, memory, disk):
 
 
 if __name__ == '__main__':
-    '测试代码'
-    # 连接slave
-    # kvm_ctl = kvm_service()
-    # # 为该slave创建一个ubuntu虚拟机
-    # if kvm_ctl.new_centos_vm(slave_c, 1, 1):
-    #     print("yes")
+    app.run()
