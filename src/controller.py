@@ -10,9 +10,9 @@ app = Flask(__name__)
 CORS().init_app(app)
 
 # 创建三个slave
-slave_a = slave("192.168.45.107", "root", 1, 1, 35)
-slave_b = slave("192.168.45.142", "root", 2, 2, 30)
-slave_c = slave("192.168.45.122", "root", 2, 2, 30)
+slave_a = slave("192.168.45.107", "root", 1, 1, 35, 1)
+slave_b = slave("192.168.45.142", "root", 4, 4, 30, 0)
+slave_c = slave("192.168.45.122", "root", 2, 2, 30, 0)
 slaves = [slave_a, slave_b, slave_c]
 
 
@@ -28,8 +28,8 @@ def new_vm():
     memory = int(request.args.get('memory'))
     disk = int(request.args.get('disk'))  # 硬盘大小已经被写死 此处没有作用
 
-    # 选择到了合适的slave
-    res = select_slave(cpu, memory, disk)
+    # 选择合适的slave
+    res = select_slave(os, cpu, memory, disk)
     if res is None:
         response_data = {
             'success': success,
@@ -139,9 +139,10 @@ def reboot_vm():
 def get_vm_info():
     """获取虚拟机的状态"""
     vm_name = request.args.get("vm_name")
+    vm_os = request.args.get("os")
     kvm_info = kvm_service()
     success = False
-    message = kvm_info.get_vm_info(vm_name)
+    message = kvm_info.get_vm_info(vm_name, vm_os)
     if message is not None:
         success = True
     else:
@@ -158,11 +159,19 @@ def root():
     return "success"
 
 
-def select_slave(cpu, memory, disk):
+def select_slave(os, cpu, memory, disk):
     """通过对比 寻找合适的slave作为宿主机"""
     for i, slave_item in enumerate(slaves, start=1):
         if cpu < slave_item.get_cpu() and memory < slave_item.get_memory() and disk < slave_item.disk:
-            return slave_item
+            slave_os = slave_item.get_os()
+            if slave_os == 0:
+                # 代表该slave能够创建任意类型的操作系统
+                return slave_item
+            elif slave_os == os:
+                # 代表该slave有能力创建该类型的虚拟机
+                return slave_item
+            else:
+                continue
     return None
 
 

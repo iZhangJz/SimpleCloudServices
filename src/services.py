@@ -1,5 +1,4 @@
 import time
-
 import libvirt
 import uuid
 
@@ -52,7 +51,7 @@ class kvm_service:
                     </disk> 
                     <input type='mouse' bus='ps2'/> 
                     <graphics type='vnc' port='-1' autoport='yes' listen = '0.0.0.0' keymap='en-us'/>   //vnc方式登录，端口号自动分配，自动加1 
-                </devices> 
+                </devices>
             </domain> 
         """
         conn = self.connect_to_remote_slave(slave)
@@ -188,7 +187,7 @@ class kvm_service:
         conn.close()
         return True
 
-    def get_vm_info(self, vm_name):
+    def get_vm_info(self, vm_name, vm_os):
         """获取虚拟机状态 cpu使用率 内存使用率"""
         slave = name_to_slave[vm_name]
         if slave is None:
@@ -200,29 +199,36 @@ class kvm_service:
         vm_state = {}
         # 虚拟机状态
         if current_state == libvirt.VIR_DOMAIN_NOSTATE:
-            vm_state["state"] = f"{vm_name}: NOSTATE"
+            vm_state["state"] = "NOSTATE"
         elif current_state == libvirt.VIR_DOMAIN_RUNNING:
-            vm_state["state"] = f"{vm_name}: RUNNING"
+            vm_state["state"] = "RUNNING"
         elif current_state == libvirt.VIR_DOMAIN_SHUTOFF:
-            vm_state["state"] = f"{vm_name}: SHUTOFF"
+            vm_state["state"] = "SHUTOFF"
         else:
-            vm_state["state"] = f"{vm_name}: UNKNOWN"
+            vm_state["state"] = "UNKNOWN"
 
         # 计算CPU使用率
+        time1 = time.time()
         cpu_time_1 = dom.info()[4]  # 获取当前CPU时间
-        time.sleep(1)
+        time.sleep(2)
+        time2 = time.time()
         cpu_time_2 = dom.info()[4]  # 再次获取CPU时间
+        cpu_cores = int(dom.info()[3])  # CPU的核数
         cpu_time_diff = cpu_time_2 - cpu_time_1
-        cpu_cores = dom.info()[3]  # CPU的核数
-        cpu_usage = round(100 * cpu_time_diff / (1 * cpu_cores * 1e9), 2)
+        cpu_usage = round(100 * cpu_time_diff / ((time2 - time1) * cpu_cores * 1e9), 2)
         vm_state["cpu"] = cpu_usage
 
-        # 计算内存使用率
+        # 计算内存使用率 ubuntu不支持available和unused字段
         mem_stats = dom.memoryStats()  # 获取虚拟机的内存统计信息
-        mem_total = mem_stats["available"]  # 获取虚拟机的总内存数
-        mem_unused = mem_stats["unused"]  # 获取虚拟机的未使用内存
-        mem_used = mem_total - mem_unused
-        mem_usage = round(100 * mem_used / mem_total, 2)
+        if vm_os == 1:
+            mem_unused = mem_stats['unused']  # 获取虚拟机的未使用内存
+            mem_total = mem_stats['available']  # 获取虚拟机的总内存数
+            mem_used = mem_total - mem_unused
+            mem_usage = round(100.0 * mem_used / mem_total, 2)
+        else:
+            mem_used = mem_stats['rss']   # 获取驻留内存数
+            mem_total = mem_stats['actual']
+            mem_usage = max(0.0, min(round(100.0 * mem_used / mem_total), 100.0))
         vm_state["memory"] = mem_usage
 
         conn.close()
@@ -240,4 +246,5 @@ class kvm_service:
         mem_size_mb = dom.info()[1] / 1024 / 1024
         mem_size_gb = round(mem_size_mb)
         return mem_size_gb
+
 

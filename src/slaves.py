@@ -6,12 +6,13 @@ slave的相关操作
 
 
 class slave:
-    def __init__(self, ip, username, cpu, memory, disk):
+    def __init__(self, ip, username, cpu, memory, disk, os):
         self.ip = ip
         self.username = username
         self.cpu = cpu
         self.memory = memory
         self.disk = disk
+        self.os = os    # os为1代表只能创建ubuntu os为2代表只能创建centos os为0代表都能创建
 
     def get_username(self):
         return self.username
@@ -27,6 +28,9 @@ class slave:
 
     def get_memory(self):
         return self.memory
+
+    def get_os(self):
+        return self.os
 
     def set_cpu(self, new_cpu):
         self.cpu = new_cpu
@@ -52,3 +56,4 @@ class slave:
         self.cpu += cpu
         self.memory += memory
         return True
+
